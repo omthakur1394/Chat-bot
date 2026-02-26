@@ -9,3 +9,4 @@ langchain-community
 arxiv
 wikipedia
 tavily-python
+langchain-tavily
