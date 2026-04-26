@@ -10,3 +10,5 @@ arxiv
 wikipedia
 tavily-python
 langchain-tavily
+langgraph-checkpoint-postgres
+psycopg[binary]
