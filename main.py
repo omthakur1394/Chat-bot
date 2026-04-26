@@ -26,5 +26,18 @@ async def chat_endpoint(request:ChatRequest):
         config=config
     )
     return {"response": result["messages"][-1].content}
+@app.get("/history/{thread_id}")
+async def get_history(thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
+    state = graph.get_state(config)
+    messages = state.values.get("messages", [])
+    history = []
+    for msg in messages:
+        if hasattr(msg, "type"):
+            history.append({
+                "role": msg.type,
+                "content": msg.content
+            })
+    return {"history": history}
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
