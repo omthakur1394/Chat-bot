@@ -6,7 +6,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.postgres import PostgresSaver
 from .config import llm 
-from .dotenv import load_dotenv
+from dotenv import load_dotenv
 import os 
 from tools import tools
 load_dotenv ()
