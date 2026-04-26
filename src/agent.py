@@ -29,7 +29,10 @@ bulider.add_edge("tools","tools_calling")
 pool = ConnectionPool(
     conninfo=DB_URI,
     max_size=10,
-    kwargs={"autocommit": True}
+    max_idle=300,
+    max_lifetime=3600,
+    reconnect_timeout=30,
+    kwargs={"autocommit": True,"sslmode":"require"}
 )
 
 checkpointer = PostgresSaver(pool)
