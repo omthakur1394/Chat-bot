@@ -5,10 +5,10 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.postgres import PostgresSaver
-from .config import llm 
+from src.config import llm 
 from dotenv import load_dotenv
 import os 
-from tools import tools
+from src.tools import tools
 load_dotenv ()
 llm_with_tools = llm.bind_tools(tools)
 DB_URI = os.getenv("DATABASE_URL")
