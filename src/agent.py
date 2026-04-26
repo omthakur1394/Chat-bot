@@ -4,6 +4,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from psycopg import Connection
 from langgraph.checkpoint.postgres import PostgresSaver
 from src.config import llm 
 from dotenv import load_dotenv
@@ -26,7 +27,7 @@ bulider.add_edge(START,"tools_calling")
 bulider.add_conditional_edges("tools_calling",tools_condition)
 bulider.add_edge("tools","tools_calling")
 
-with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
-    checkpointer.setup()
-    graph = bulider.compile(checkpointer=checkpointer)
-
+conn = Connection.connect(DB_URI, autocommit=True)
+checkpoint = PostgresSaver(conn)
+checkpoint.setup()
+graph = bulider.compile(checkpointer=checkpoint)
