@@ -39,5 +39,9 @@ async def get_history(thread_id: str):
                 "content": msg.content
             })
     return {"history": history}
+@app.delete("/history/{thread_id}")
+async def delete_history(thread_id: str):
+    graph.checkpointer.delete_thread(thread_id)
+    return {"status": "deleted", "thread_id": thread_id}
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
