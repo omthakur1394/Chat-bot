@@ -1,22 +1,33 @@
-import os
-from dotenv import load_dotenv
+from langchain_core.tools import tool
 from langchain_community.tools.arxiv.tool import ArxivQueryRun
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_tavily import TavilySearch
+import requests, os
+from dotenv import load_dotenv
+
 load_dotenv()
 
+arxiv = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=2, doc_content_chars_max=500))
+wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=500))
+tavily = TavilySearchResults()
 
-api_wrapper_arxiv = ArxivAPIWrapper(top_k_results=2, doc_content_chars_max=500)
-arxiv = ArxivQueryRun(api_wrapper=api_wrapper_arxiv)
+@tool
+def get_weather(city: str) -> dict:
+    """Get current weather for a given city."""
+    api_key = os.getenv("OPEN_WEATHER_API")
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    response = requests.get(url)
+    data = response.json()
+    if response.status_code != 200:
+        return {"error": data.get("message", "Error")}
+    return {
+        "city": data["name"],
+        "temperature": data["main"]["temp"],
+        "humidity": data["main"]["humidity"],
+        "weather": data["weather"][0]["description"],
+        "wind_speed": data["wind"]["speed"]
+    }
 
-# Wikipedia
-api_wrapper_wiki = WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=500)
-wikipedia = WikipediaQueryRun(api_wrapper=api_wrapper_wiki)
-
-# Tavily
-tavily = TavilySearchResults(api_key=os.getenv("TAVILY_API_KEY"))
-
-tools = [arxiv, tavily, wikipedia]
+tools = [arxiv, tavily, wikipedia, get_weather]
