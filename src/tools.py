@@ -4,7 +4,9 @@ from langchain_community.utilities.arxiv import ArxivAPIWrapper
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_community.utilities import SerpAPIWrapper
 import requests, os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,5 +31,12 @@ def get_weather(city: str) -> dict:
         "weather": data["weather"][0]["description"],
         "wind_speed": data["wind"]["speed"]
     }
-
-tools = [arxiv, tavily, wikipedia, get_weather]
+@tool
+def google_search(query: str) -> str:
+    """
+    Search Google for real-time information, facts, and current events.
+    Use this tool whenever you need to find answers from the internet.
+    """
+    search = SerpAPIWrapper()
+    return search.run(query)
+tools = [arxiv, tavily, wikipedia, get_weather,google_search]

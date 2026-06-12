@@ -12,3 +12,4 @@ tavily-python
 langchain-tavily
 langgraph-checkpoint-postgres
 psycopg[binary]
+google-search-results
