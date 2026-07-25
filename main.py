@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from src.agent import graph
+from src.agentv2 import invoke_agentv2
 import uvicorn
 
 from fastapi import FastAPI
@@ -26,6 +27,13 @@ async def chat_endpoint(request:ChatRequest):
         config=config
     )
     return {"response": result["messages"][-1].content}
+
+
+@app.post("/chat/v2")
+async def chat_v2_endpoint(request: ChatRequest):
+    response = invoke_agentv2(request.message, request.thread_id)
+    return {"response": response}
+
 @app.get("/history/{thread_id}")
 async def get_history(thread_id: str):
     config = {"configurable": {"thread_id": thread_id}}
