@@ -2,7 +2,7 @@ from langchain_groq import ChatGroq
 import os 
 from dotenv import load_dotenv 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 def get_required_api_key(name: str, expected_prefix: str) -> str:

@@ -1,3 +1,7 @@
+import os
+import requests
+from dotenv import load_dotenv
+
 from langchain_core.tools import tool
 from langchain_community.tools.arxiv.tool import ArxivQueryRun
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
@@ -5,12 +9,10 @@ from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities import SerpAPIWrapper
-import requests, os
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
+# Pre-built Community Tools
 arxiv = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=2, doc_content_chars_max=500))
 wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=500))
 tavily = TavilySearchResults()
@@ -31,6 +33,7 @@ def get_weather(city: str) -> dict:
         "weather": data["weather"][0]["description"],
         "wind_speed": data["wind"]["speed"]
     }
+
 @tool
 def google_search(query: str) -> str:
     """
@@ -39,4 +42,7 @@ def google_search(query: str) -> str:
     """
     search = SerpAPIWrapper()
     return search.run(query)
-tools = [arxiv, tavily, wikipedia, get_weather,google_search]
+
+#
+
+tools = [arxiv, tavily, wikipedia, get_weather, google_search]
