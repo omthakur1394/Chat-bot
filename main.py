@@ -27,8 +27,8 @@ class ChatRequest(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     config = {"configurable": {"thread_id": request.thread_id}}
 
-    async def event_generator():
-        async for event in graph.astream_events(
+    def event_generator():
+        for event in graph.stream_events(
             {"messages": [("user", request.message)]},
             config=config,
             version="v2",
