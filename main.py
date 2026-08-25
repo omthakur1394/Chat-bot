@@ -48,14 +48,21 @@ async def chat_endpoint(request: ChatRequest):
             # Stream LLM tokens as they are generated
             if event_type == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
-                if chunk and chunk.content:
+                if chunk:
+                    # Stream reasoning tokens (e.g. Groq reasoning models like gpt-oss-120b / deepseek)
+                    reasoning = chunk.additional_kwargs.get("reasoning_content", "")
+                    if reasoning:
+                        yield f"data: {json.dumps({'type': 'reasoning', 'content': reasoning})}\n\n"
+
+                    # Stream answer content tokens
                     content = chunk.content
-                    if isinstance(content, list):
-                        content = "".join(
-                            c.get("text", "") if isinstance(c, dict) else str(c)
-                            for c in content
-                        )
-                    yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+                    if content:
+                        if isinstance(content, list):
+                            content = "".join(
+                                c.get("text", "") if isinstance(c, dict) else str(c)
+                                for c in content
+                            )
+                        yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
 
             # Stream tool calls
             elif event_type == "on_tool_start":
@@ -66,7 +73,15 @@ async def chat_endpoint(request: ChatRequest):
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/history/{thread_id}")
