@@ -1,12 +1,31 @@
+import os
 import json
+from dotenv import load_dotenv
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from src.agent import init_graph, get_graph, get_checkpointer, pool
+load_dotenv(override= True)
+
+def get_client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+limiter = Limiter(
+    key_func=get_client_ip,
+    storage_uri=os.getenv("REDIS_URL", "memory://"),
+)
 
 
 @asynccontextmanager
@@ -18,6 +37,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,28 +55,26 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-async def chat_endpoint(request: ChatRequest):
+@limiter.limit("3/minute")
+async def chat_endpoint(request: Request, body: ChatRequest):
     graph = await get_graph()
-    config = {"configurable": {"thread_id": request.thread_id}}
+    config = {"configurable": {"thread_id": body.thread_id}}
 
     async def event_generator():
         async for event in graph.astream_events(
-            {"messages": [("user", request.message)]},
+            {"messages": [("user", body.message)]},
             config=config,
             version="v2",
         ):
             event_type = event.get("event")
 
-            # Stream LLM tokens as they are generated
             if event_type == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 if chunk:
-                    # Stream reasoning tokens (e.g. Groq reasoning models like gpt-oss-120b / deepseek)
                     reasoning = chunk.additional_kwargs.get("reasoning_content", "")
                     if reasoning:
                         yield f"data: {json.dumps({'type': 'reasoning', 'content': reasoning})}\n\n"
 
-                    # Stream answer content tokens
                     content = chunk.content
                     if content:
                         if isinstance(content, list):
@@ -64,7 +84,6 @@ async def chat_endpoint(request: ChatRequest):
                             )
                         yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
 
-            # Stream tool calls
             elif event_type == "on_tool_start":
                 yield f"data: {json.dumps({'type': 'tool_start', 'tool': event.get('name'), 'input': event.get('data', {}).get('input')})}\n\n"
 
@@ -85,7 +104,8 @@ async def chat_endpoint(request: ChatRequest):
 
 
 @app.get("/history/{thread_id}")
-async def get_history(thread_id: str):
+@limiter.limit("30/minute")
+async def get_history(request: Request, thread_id: str):
     graph = await get_graph()
     config = {"configurable": {"thread_id": thread_id}}
     state = await graph.aget_state(config)
@@ -93,15 +113,13 @@ async def get_history(thread_id: str):
     history = []
     for msg in messages:
         if hasattr(msg, "type"):
-            history.append({
-                "role": msg.type,
-                "content": msg.content
-            })
+            history.append({"role": msg.type, "content": msg.content})
     return {"history": history}
 
 
 @app.delete("/history/{thread_id}")
-async def delete_history(thread_id: str):
+@limiter.limit("3/minute")
+async def delete_history(request: Request, thread_id: str):
     checkpointer = await get_checkpointer()
     await checkpointer.adelete_thread(thread_id)
     return {"status": "deleted", "thread_id": thread_id}
